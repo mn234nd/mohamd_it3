@@ -233,7 +233,6 @@ def webhook():
     """استقبال التحديثات من تيليجرام وتحويلها للبوت"""
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-        # تشغيل التحديث بشكل غير متزامن داخل حلقة العمل
         import asyncio
         asyncio.run(telegram_app.process_update(update))
     return "ok", 200
@@ -253,14 +252,12 @@ def main():
         )
     )
 
-    # ضبط الويب هوك مع تيليجرام تلقائياً عند الإقلاع
     webhook_url = f"{RENDER_EXTERNAL_URL}/{TOKEN}"
     telegram_app.bot.set_webhook(url=webhook_url)
     logger.info(f"Webhook set to: {webhook_url}")
 
-    # تشغيل سيرفر Flask للاستماع للطلبات القادمة من Render
     app_web.run(host="0.0.0.0", port=PORT)
 
 
 if __name__ == "__main__":
-main()
+    main()
