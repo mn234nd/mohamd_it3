@@ -231,12 +231,17 @@ def home():
 @app_web.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-        asyncio.run(telegram_app.process_update(update))
+        json_data = request.get_json(force=True)
+        update = Update.de_json(json_data, telegram_app.bot)
+        
+        async def process():
+            await telegram_app.process_update(update)
+
+        asyncio.run(process())
     return "ok", 200
 
 
-def main():
+async def setup_bot():
     global telegram_app
     telegram_app = Application.builder().token(TOKEN).build()
 
@@ -250,10 +255,17 @@ def main():
         )
     )
 
+    # تهيئة التطبيق وتشغيله لتجنب خطأ عدم التهيئة
+    await telegram_app.initialize()
+    await telegram_app.start()
+
     webhook_url = f"{RENDER_EXTERNAL_URL}/{TOKEN}"
-    asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
+    await telegram_app.bot.set_webhook(url=webhook_url)
     logger.info(f"Webhook set to: {webhook_url}")
 
+
+def main():
+    asyncio.run(setup_bot())
     app_web.run(host="0.0.0.0", port=PORT)
 
 
