@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from flask import Flask, request
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -20,8 +21,8 @@ logger = logging.getLogger(__name__)
 TOKEN = "9278942278:AAF8sn53bX6HgKKgf8bALJ9D9umeRD3uAg4"
 ADMIN_ID = 893206139
 
-# ضع هنا رابط مشروعك على Render بعد إنشائه، مثال: https://your-app-name.onrender.com
-RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://YOUR_APP_NAME.onrender.com")
+# رابط مشروعك على Render
+RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://mohamd-it3.onrender.com")
 PORT = int(os.environ.get("PORT", 8080))
 
 app_web = Flask(__name__)
@@ -42,7 +43,6 @@ UNIVERSITY_DATA = {
 user_states = {}
 temp_lec_titles = {}
 
-# متغير لتخزين تطبيق تيليجرام
 telegram_app = None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -230,10 +230,8 @@ def home():
 
 @app_web.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    """استقبال التحديثات من تيليجرام وتحويلها للبوت"""
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-        import asyncio
         asyncio.run(telegram_app.process_update(update))
     return "ok", 200
 
@@ -253,7 +251,7 @@ def main():
     )
 
     webhook_url = f"{RENDER_EXTERNAL_URL}/{TOKEN}"
-    telegram_app.bot.set_webhook(url=webhook_url)
+    asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
     logger.info(f"Webhook set to: {webhook_url}")
 
     app_web.run(host="0.0.0.0", port=PORT)
