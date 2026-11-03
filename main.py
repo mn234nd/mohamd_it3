@@ -44,6 +44,7 @@ user_states = {}
 temp_lec_titles = {}
 
 telegram_app = None
+loop = None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -233,16 +234,15 @@ def webhook():
     if request.method == "POST":
         json_data = request.get_json(force=True)
         update = Update.de_json(json_data, telegram_app.bot)
-        
-        async def process():
-            await telegram_app.process_update(update)
-
-        asyncio.run(process())
+        # استخدام حلقة الأحداث الأساسية المفتوحة دون إغلاقها
+        asyncio.run_coroutine_threadsafe(telegram_app.process_update(update), loop)
     return "ok", 200
 
 
-async def setup_bot():
-    global telegram_app
+async def main_async():
+    global telegram_app, loop
+    loop = asyncio.get_running_loop()
+
     telegram_app = Application.builder().token(TOKEN).build()
 
     telegram_app.add_handler(CommandHandler("start", start))
@@ -255,7 +255,6 @@ async def setup_bot():
         )
     )
 
-    # تهيئة التطبيق وتشغيله لتجنب خطأ عدم التهيئة
     await telegram_app.initialize()
     await telegram_app.start()
 
@@ -263,10 +262,17 @@ async def setup_bot():
     await telegram_app.bot.set_webhook(url=webhook_url)
     logger.info(f"Webhook set to: {webhook_url}")
 
+    # تشغيل خادم Flask في خلفية غير متزامنة ليبقى الـ Event Loop نشطاً
+    import hypercorn.asyncio
+    from hypercorn.config import Config
+
+    config = Config()
+    config.bind = [f"0.0.0.0:{PORT}"]
+    await hypercorn.asyncio.serve(app_web, config)
+
 
 def main():
-    asyncio.run(setup_bot())
-    app_web.run(host="0.0.0.0", port=PORT)
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":
